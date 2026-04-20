@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "Кот-помощник",
+  "version": "1.0",
+  "description": "Кот следит за мышкой и ловит мух",
+  
+  "permissions": [
+    "activeTab",
+    "<all_urls>"
+  ],
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["cat-static.js", "cat-animations.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "browser_action": {
+    "default_title": "Кот-помощник"
+  }
+}
