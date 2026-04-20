@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐱 SVG Редактор Кота - Полная версия</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 15px;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #e8e8e8;
+        }
+        .container {
+            display: flex;
+            gap: 15px;
+        }
+        .drawing-area {
+            position: relative;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: auto;
+        }
+        .canvas-wrapper {
+            position: relative;
+            min-width: 500px;
+            min-height: 500px;
+        }
+        svg {
+            display: block;
+            background: white;
+            cursor: crosshair;
+        }
+        .controls {
+            width: 420px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        .tool-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        .tool-section h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        .tool-btn {
+            padding: 6px 10px;
+            margin: 2px;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .tool-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        .button-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+        button {
+            padding: 6px 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { background: #1976D2; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .danger-btn { background: #f44336; }
+        .danger-btn:hover { background: #d32f2f; }
+        .success-btn { background: #4CAF50; }
+        .success-btn:hover { background: #388E3C; }
+        .warning-btn { background: #ff9800; }
+        .warning-btn:hover { background: #f57c00; }
+        
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .zoom-control input {
+            width: 80px;
+            padding: 4px;
+        }
+        
+        .layers-panel {
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+        .layer-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .layer-item:hover { background: #f0f0f0; }
+        .layer-item.selected-layer {
+            background: #e3f2fd;
+            border-left: 3px solid #2196F3;
+        }
+        .layer-index {
+            width: 30px;
+            color: #666;
+        }
+        .layer-name {
+            flex: 1;
+        }
+        .layer-controls {
+            display: flex;
+            gap: 4px;
+        }
+        .layer-controls button {
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+        
+        .history-list {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            padding: 5px;
+            font-size: 11px;
+        }
+        
+        .element-properties {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 4px;
+        }
+        .prop-row {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .prop-row label {
+            width: 70px;
+            font-size: 11px;
+        }
+        .prop-row input, .prop-row select {
+            flex: 1;
+            padding: 3px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .scale-indicator {
+            padding: 4px 8px;
+            background: #333;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🐱 SVG Редактор Кота (Слои, Масштаб, Экспорт)</h2>
+    <div class="container">
+        <div class="drawing-area">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <svg id="mainSvg" width="500" height="500" viewBox="0 0 500 500">
+                    <g id="grid"></g>
+                    <g id="drawingLayer"></g>
+                    <g id="handlesLayer"></g>
+                    <g id="tempLayer"></g>
+                </svg>
+            </div>
+            <div style="padding: 8px; background: #eee; display: flex; justify-content: space-between; align-items: center;">
+                <span id="mouseCoords">X: 0, Y: 0</span>
+                <div style="display: flex; gap: 10px;">
+                    <span id="elementCount">Элементов: 0</span>
+                    <span id="scaleIndicator" class="scale-indicator">100%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <!-- Масштаб -->
+            <div class="tool-section">
+                <h4>🔍 Масштаб</h4>
+                <div class="zoom-control">
+                    <button id="zoomOutBtn">−</button>
+                    <input type="range" id="zoomSlider" min="50" max="200" value="100" step="10">
+                    <button id="zoomInBtn">+</button>
+                    <button id="zoomResetBtn">100%</button>
+                </div>
+            </div>
+            
+            <!-- Инструменты -->
+            <div class="tool-section">
+                <h4>🎯 Инструменты</h4>
+                <div class="button-group">
+                    <button class="tool-btn" data-tool="select">🖱️ Выбрать</button>
+                    <button class="tool-btn" data-tool="ellipse">🔵 Овал</button>
+                    <button class="tool-btn" data-tool="circle">⚪ Круг</button>
+                    <button class="tool-btn" data-tool="line">📏 Линия</button>
+                    <button class="tool-btn" data-tool="path">✏️ Путь</button>
+                    <button class="tool-btn" data-tool="polygon">🔺 Полигон</button>
+                </div>
+            </div>
+            
+            <!-- Параметры -->
+            <div class="tool-section">
+                <h4>🎨 Параметры</h4>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div><label>Заливка:</label><input type="color" id="fillColor" value="#ffffff"></div>
+                    <div><label>Обводка:</label><input type="color" id="strokeColor" value="#222222"></div>
+                    <div><label>Толщина:</label><input type="number" id="strokeWidth" value="3" min="1" max="20" style="width:60px"></div>
+                </div>
+            </div>
+            
+            <!-- Слои -->
+            <div class="tool-section">
+                <h4>📚 Слои</h4>
+                <div class="layers-panel" id="layersPanel">
+                    <div style="padding: 5px; text-align: center; color: #999;">Загрузка...</div>
+                </div>
+                <div class="button-group">
+                    <button id="moveUpBtn" title="Поднять выше">⬆️ Выше</button>
+                    <button id="moveDownBtn" title="Опустить ниже">⬇️ Ниже</button>
+                    <button id="moveTopBtn" title="Наверх">⏫ Наверх</button>
+                    <button id="moveBottomBtn" title="Вниз">⏬ Вниз</button>
+                </div>
+            </div>
+            
+            <!-- Свойства элемента -->
+            <div class="element-properties" id="elementProperties" style="display:none;">
+                <h4>📐 Свойства</h4>
+                <div id="selectedInfo" style="font-size:11px; margin-bottom:8px;"></div>
+                <div id="propertyFields"></div>
+                <div class="button-group">
+                    <button id="applyPropsBtn">✅ Применить</button>
+                    <button id="deleteElementBtn" class="danger-btn">🗑️ Удалить</button>
+                    <button id="duplicateElementBtn" class="warning-btn">📋 Копия</button>
+                </div>
+            </div>
+            
+            <!-- История -->
+            <div class="tool-section">
+                <h4>📜 История (макс. 40)</h4>
+                <div class="history-list" id="historyList"></div>
+                <div class="button-group">
+                    <button id="undoBtn" disabled>↩️ Отменить</button>
+                    <button id="redoBtn" disabled>↪️ Вернуть</button>
+                </div>
+            </div>
+            
+            <!-- Основные действия -->
+            <div class="tool-section">
+                <h4>📋 Действия</h4>
+                <div class="button-group">
+                    <button id="drawCatBtn" class="success-btn">🐱 Нарисовать кота</button>
+                    <button id="exportCoordsBtn">💾 Экспорт</button>
+                    <button id="clearAllBtn" class="danger-btn">🗑️ Очистить</button>
+                </div>
+            </div>
+            
+            <div style="font-size:11px; color:#666; margin-top:10px;">
+                <strong>💡 Горячие клавиши:</strong> Delete - удалить, Ctrl+Z/Y - отменить/вернуть
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const svg = document.getElementById('mainSvg');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const drawingLayer = document.getElementById('drawingLayer');
+        const handlesLayer = document.getElementById('handlesLayer');
+        const tempLayer = document.getElementById('tempLayer');
+        const grid = document.getElementById('grid');
+        const mouseCoords = document.getElementById('mouseCoords');
+        const elementCount = document.getElementById('elementCount');
+        const scaleIndicator = document.getElementById('scaleIndicator');
+        const zoomSlider = document.getElementById('zoomSlider');
+        
+        let currentTool = 'select';
+        let isDrawing = false;
+        let startX, startY;
+        let tempElement = null;
+        let elements = [];
+        let selectedElement = null;
+        let selectedIndex = -1;
+        let currentScale = 1;
+        
+        // История
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 40;
+        
+        // ========== КОТ С ХВОСТОМ ==========
+        const defaultCat = [
+            {type: 'ellipse', attr: {cx:250, cy:380, rx:75, ry:6, fill:'rgba(0,0,0,0.15)', stroke:'none'}},
+            {type: 'path', attr: {d:'M 230,340 Q 290,310 310,270 Q 320,240 300,230', fill:'none', stroke:'#222', 'stroke-width':5, 'stroke-linecap':'round'}},
+            {type: 'ellipse', attr: {cx:215, cy:370, rx:18, ry:8, fill:'#fff', stroke:'#222', 'stroke-width':4}},
+            {type: 'ellipse', attr: {cx:285, cy:370, rx:18, ry:8, fill:'#fff', stroke:'#222', 'stroke-width':4}},
+            {type: 'ellipse', attr: {cx:250, cy:340, rx:38, ry:35, fill:'#fff', stroke:'#222', 'stroke-width':3}},
+            {type: 'line', attr: {x1:235, y1:360, x2:230, y2:385, stroke:'#222', 'stroke-width':3, 'stroke-linecap':'round'}},
+            {type: 'line', attr: {x1:265, y1:360, x2:270, y2:385, stroke:'#222', 'stroke-width':3, 'stroke-linecap':'round'}},
+            {type: 'ellipse', attr: {cx:230, cy:383, rx:8, ry:4, fill:'#fff', stroke:'#222', 'stroke-width':2}},
+            {type: 'ellipse', attr: {cx:270, cy:383, rx:8, ry:4, fill:'#fff', stroke:'#222', 'stroke-width':2}},
+            {type: 'ellipse', attr: {cx:250, cy:265, rx:52, ry:48, fill:'#fff', stroke:'#222', 'stroke-width':3}},
+            {type: 'polygon', attr: {points:'210,225 198,193 226,213', fill:'#fff', stroke:'#222', 'stroke-width':3, 'stroke-linejoin':'round'}},
+            {type: 'polygon', attr: {points:'286,223 298,191 270,211', fill:'#fff', stroke:'#222', 'stroke-width':3, 'stroke-linejoin':'round'}},
+            {type: 'polygon', attr: {points:'212,222 202,198 224,215', fill:'#E0E0E0', stroke:'#222', 'stroke-width':2}},
+            {type: 'polygon', attr: {points:'284,220 294,196 272,213', fill:'#E0E0E0', stroke:'#222', 'stroke-width':2}},
+            {type: 'ellipse', attr: {cx:225, cy:260, rx:12, ry:14, fill:'#fff', stroke:'#222', 'stroke-width':3}},
+            {type: 'ellipse', attr: {cx:273, cy:258, rx:12, ry:14, fill:'#fff', stroke:'#222', 'stroke-width':3}},
+            {type: 'circle', attr: {cx:223, cy:260, r:5, fill:'#222'}},
+            {type: 'circle', attr: {cx:271, cy:258, r:5, fill:'#222'}},
+            {type: 'circle', attr: {cx:220, cy:255, r:2.5, fill:'#fff'}},
+            {type: 'circle', attr: {cx:268, cy:253, r:2.5, fill:'#fff'}},
+            {type: 'polygon', attr: {points:'243,283 250,283 246,288', fill:'#FFB6C1', stroke:'#222', 'stroke-width':2}},
+            {type: 'path', attr: {d:'M 239,297 Q 246,303 253,297', fill:'none', stroke:'#222', 'stroke-width':2.5, 'stroke-linecap':'round'}},
+            {type: 'path', attr: {d:'M 205,275 L 160,270 M 205,283 L 160,285 M 281,273 L 325,267 M 281,281 L 325,283', fill:'none', stroke:'#222', 'stroke-width':2.5, 'stroke-linecap':'round'}},
+            {type: 'path', attr: {d:'M 245,233 L 245,241 M 238,235 L 238,243 M 252,235 L 252,243', fill:'none', stroke:'#222', 'stroke-width':2.5, 'stroke-linecap':'round'}}
+        ];
+        
+        // ========== СЕТКА ==========
+        function drawGrid() {
+            let html = '';
+            for (let i = 0; i <= 500; i += 50) {
+                html += `<line x1="${i}" y1="0" x2="${i}" y2="500" stroke="#e0e0e0" stroke-width="1"/>`;
+                html += `<text x="${i}" y="10" font-size="10" fill="#999">${i}</text>`;
+                html += `<line x1="0" y1="${i}" x2="500" y2="${i}" stroke="#e0e0e0" stroke-width="1"/>`;
+                html += `<text x="2" y="${i-2}" font-size="10" fill="#999">${i}</text>`;
+            }
+            html += `<line x1="250" y1="0" x2="250" y2="500" stroke="#ff9999" stroke-width="1" stroke-dasharray="5,5"/>`;
+            html += `<line x1="0" y1="250" x2="500" y2="250" stroke="#ff9999" stroke-width="1" stroke-dasharray="5,5"/>`;
+            grid.innerHTML = html;
+        }
+        drawGrid();
+        
+        // ========== МАСШТАБ ==========
+        function setZoom(percent) {
+            currentScale = percent / 100;
+            const newSize = Math.round(500 * currentScale);
+            svg.style.width = newSize + 'px';
+            svg.style.height = newSize + 'px';
+            scaleIndicator.textContent = percent + '%';
+            zoomSlider.value = percent;
+        }
+        
+        zoomSlider.addEventListener('input', (e) => setZoom(e.target.value));
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            setZoom(Math.min(200, parseInt(zoomSlider.value) + 10));
+        });
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            setZoom(Math.max(50, parseInt(zoomSlider.value) - 10));
+        });
+        document.getElementById('zoomResetBtn').addEventListener('click', () => setZoom(100));
+        
+        // ========== СЛОИ ==========
+        function updateLayersPanel() {
+            const panel = document.getElementById('layersPanel');
+            let html = '';
+            elements.forEach((el, idx) => {
+                const name = `${el.type} #${idx}`;
+                html += `<div class="layer-item ${selectedIndex === idx ? 'selected-layer' : ''}" onclick="selectElement(${idx})">
+                    <span class="layer-index">${idx}</span>
+                    <span class="layer-name">${name}</span>
+                    <span style="width:12px;height:12px;background:${el.attr.fill || 'none'};border:1px solid ${el.attr.stroke || '#222'};border-radius:2px;"></span>
+                </div>`;
+            });
+            panel.innerHTML = html || '<div style="padding:5px;text-align:center;color:#999;">Нет слоёв</div>';
+        }
+        
+        function moveLayer(fromIdx, toIdx) {
+            if (fromIdx < 0 || fromIdx >= elements.length || toIdx < 0 || toIdx >= elements.length) return;
+            const [moved] = elements.splice(fromIdx, 1);
+            elements.splice(toIdx, 0, moved);
+            redrawAll();
+            if (selectedIndex === fromIdx) selectedIndex = toIdx;
+            else if (selectedIndex > fromIdx && selectedIndex <= toIdx) selectedIndex--;
+            else if (selectedIndex < fromIdx && selectedIndex >= toIdx) selectedIndex++;
+            drawHandles(selectedIndex);
+            updateLayersPanel();
+            saveToHistory();
+        }
+        
+        // ========== ИСТОРИЯ ==========
+        function saveToHistory() {
+            if (historyIndex < history.length - 1) history = history.slice(0, historyIndex + 1);
+            history.push(elements.map(el => ({type: el.type, attr: {...el.attr}})));
+            if (history.length > MAX_HISTORY) history.shift();
+            else historyIndex++;
+            updateHistoryUI();
+            document.getElementById('undoBtn').disabled = historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
+        
+        function updateHistoryUI() {
+            const list = document.getElementById('historyList');
+            let html = '';
+            for (let i = Math.max(0, history.length - 10); i < history.length; i++) {
+                html += `<div style="padding:3px;cursor:pointer;${i === historyIndex ? 'background:#e3f2fd;' : ''}" onclick="jumpToHistory(${i})">
+                    Шаг ${i+1}: ${history[i].length} эл.
+                </div>`;
+            }
+            list.innerHTML = html || '<div style="color:#999;">Пусто</div>';
+        }
+        
+        window.jumpToHistory = function(idx) {
+            if (idx >= 0 && idx < history.length) {
+                historyIndex = idx;
+                elements = history[idx].map(el => ({type: el.type, attr: {...el.attr}}));
+                redrawAll();
+                clearSelection();
+                updateLayersPanel();
+                updateHistoryUI();
+            }
+        };
+        
+        // ========== ОТРИСОВКА ==========
+        function redrawAll() {
+            drawingLayer.innerHTML = '';
+            elements.forEach((el, idx) => {
+                const elem = document.createElementNS('http://www.w3.org/2000/svg', el.type);
+                Object.entries(el.attr).forEach(([k, v]) => elem.setAttribute(k, v));
+                elem.dataset.index = idx;
+                elem.style.cursor = 'pointer';
+                drawingLayer.appendChild(elem);
+            });
+            elementCount.textContent = `Элементов: ${elements.length}`;
+        }
+        
+        function clearSelection() {
+            selectedElement = null;
+            selectedIndex = -1;
+            handlesLayer.innerHTML = '';
+            document.getElementById('elementProperties').style.display = 'none';
+        }
+        
+        window.selectElement = function(idx) {
+            if (idx < 0 || idx >= elements.length) {
+                clearSelection();
+                return;
+            }
+            selectedIndex = idx;
+            selectedElement = elements[idx];
+            
+            document.getElementById('selectedInfo').textContent = `${selectedElement.type} #${idx}`;
+            
+            let html = '';
+            const a = selectedElement.attr;
+            
+            if (selectedElement.type === 'ellipse') {
+                html = `<div class="prop-row"><label>cx</label><input id="prop_cx" value="${a.cx||0}"></div>
+                        <div class="prop-row"><label>cy</label><input id="prop_cy" value="${a.cy||0}"></div>
+                        <div class="prop-row"><label>rx</label><input id="prop_rx" value="${a.rx||0}"></div>
+                        <div class="prop-row"><label>ry</label><input id="prop_ry" value="${a.ry||0}"></div>`;
+            } else if (selectedElement.type === 'circle') {
+                html = `<div class="prop-row"><label>cx</label><input id="prop_cx" value="${a.cx||0}"></div>
+                        <div class="prop-row"><label>cy</label><input id="prop_cy" value="${a.cy||0}"></div>
+                        <div class="prop-row"><label>r</label><input id="prop_r" value="${a.r||0}"></div>`;
+            } else if (selectedElement.type === 'line') {
+                html = `<div class="prop-row"><label>x1</label><input id="prop_x1" value="${a.x1||0}"></div>
+                        <div class="prop-row"><label>y1</label><input id="prop_y1" value="${a.y1||0}"></div>
+                        <div class="prop-row"><label>x2</label><input id="prop_x2" value="${a.x2||0}"></div>
+                        <div class="prop-row"><label>y2</label><input id="prop_y2" value="${a.y2||0}"></div>`;
+            } else {
+                html = `<div class="prop-row">Базовое редактирование</div>`;
+            }
+            
+            html += `<div class="prop-row"><label>fill</label><input id="prop_fill" value="${a.fill||'none'}"></div>
+                     <div class="prop-row"><label>stroke</label><input id="prop_stroke" value="${a.stroke||'#222'}"></div>
+                     <div class="prop-row"><label>stroke-width</label><input id="prop_sw" value="${a['stroke-width']||2}"></div>`;
+            
+            document.getElementById('propertyFields').innerHTML = html;
+            document.getElementById('elementProperties').style.display = 'block';
+            
+            drawHandles(idx);
+            updateLayersPanel();
+        };
+        
+        function drawHandles(idx) {
+            handlesLayer.innerHTML = '';
+            if (idx < 0 || idx >= elements.length) return;
+            
+            const elem = drawingLayer.children[idx];
+            if (!elem) return;
+            
+            const bbox = elem.getBBox();
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', bbox.x - 2);
+            rect.setAttribute('y', bbox.y - 2);
+            rect.setAttribute('width', bbox.width + 4);
+            rect.setAttribute('height', bbox.height + 4);
+            rect.setAttribute('fill', 'none');
+            rect.setAttribute('stroke', '#4CAF50');
+            rect.setAttribute('stroke-width', 2);
+            rect.setAttribute('stroke-dasharray', '5,5');
+            handlesLayer.appendChild(rect);
+            
+            // Угловые ручки
+            [[bbox.x, bbox.y], [bbox.x+bbox.width, bbox.y], [bbox.x, bbox.y+bbox.height], [bbox.x+bbox.width, bbox.y+bbox.height]]
+                .forEach(([x, y], i) => {
+                    const h = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    h.setAttribute('x', x-4); h.setAttribute('y', y-4);
+                    h.setAttribute('width', 8); h.setAttribute('height', 8);
+                    h.setAttribute('fill', '#4CAF50'); h.setAttribute('stroke', '#fff');
+                    h.setAttribute('stroke-width', 1);
+                    h.dataset.handle = 'resize'; h.dataset.corner = i;
+                    h.style.cursor = i===0?'nw-resize':i===1?'ne-resize':i===2?'sw-resize':'se-resize';
+                    handlesLayer.appendChild(h);
+                });
+        }
+        
+        // ========== ДОБАВЛЕНИЕ ЭЛЕМЕНТА ==========
+        function addElement(type, attr) {
+            elements.push({type, attr});
+            redrawAll();
+            updateLayersPanel();
+            saveToHistory();
+        }
+        
+        // ========== СОБЫТИЯ МЫШИ ==========
+        svg.addEventListener('mousemove', (e) => {
+            const rect = svg.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) * 500 / rect.width / currentScale);
+            const y = Math.round((e.clientY - rect.top) * 500 / rect.height / currentScale);
+            mouseCoords.textContent = `X: ${x}, Y: ${y}`;
+            
+            if (isDrawing && tempElement) {
+                if (currentTool === 'ellipse' || currentTool === 'circle') {
+                    const rx = Math.abs(x - startX);
+                    const ry = Math.abs(y - startY);
+                    const cx = (x + startX) / 2;
+                    const cy = (y + startY) / 2;
+                    tempElement.setAttribute('cx', cx);
+                    tempElement.setAttribute('cy', cy);
+                    if (currentTool === 'circle') {
+                        tempElement.setAttribute('r', Math.min(rx, ry));
+                    } else {
+                        tempElement.setAttribute('rx', rx);
+                        tempElement.setAttribute('ry', ry);
+                    }
+                } else if (currentTool === 'line') {
+                    tempElement.setAttribute('x2', x);
+                    tempElement.setAttribute('y2', y);
+                }
+            }
+        });
+        
+        svg.addEventListener('mousedown', (e) => {
+            const rect = svg.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) * 500 / rect.width / currentScale);
+            const y = Math.round((e.clientY - rect.top) * 500 / rect.height / currentScale);
+            
+            if (currentTool === 'select') {
+                const target = e.target.closest('[data-index]');
+                if (target) selectElement(parseInt(target.dataset.index));
+                else clearSelection();
+                return;
+            }
+            
+            startX = x; startY = y;
+            isDrawing = true;
+            
+            const fill = document.getElementById('fillColor').value;
+            const stroke = document.getElementById('strokeColor').value;
+            const sw = document.getElementById('strokeWidth').value;
+            
+            tempLayer.innerHTML = '';
+            
+            if (currentTool === 'ellipse') {
+                tempElement = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                tempElement.setAttribute('cx', x); tempElement.setAttribute('cy', y);
+                tempElement.setAttribute('rx', 0); tempElement.setAttribute('ry', 0);
+            } else if (currentTool === 'circle') {
+                tempElement = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                tempElement.setAttribute('cx', x); tempElement.setAttribute('cy', y);
+                tempElement.setAttribute('r', 0);
+            } else if (currentTool === 'line') {
+                tempElement = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tempElement.setAttribute('x1', x); tempElement.setAttribute('y1', y);
+                tempElement.setAttribute('x2', x); tempElement.setAttribute('y2', y);
+                tempElement.setAttribute('stroke', stroke);
+                tempElement.setAttribute('stroke-width', sw);
+                tempElement.setAttribute('stroke-linecap', 'round');
+            }
+            
+            if (tempElement && currentTool !== 'line') {
+                tempElement.setAttribute('fill', fill);
+                tempElement.setAttribute('stroke', stroke);
+                tempElement.setAttribute('stroke-width', sw);
+            }
+            if (tempElement) tempLayer.appendChild(tempElement);
+        });
+        
+        svg.addEventListener('mouseup', () => {
+            if (isDrawing && tempElement) {
+                const attr = {};
+                for (let a of tempElement.attributes) attr[a.name] = a.value;
+                addElement(currentTool, attr);
+                tempLayer.innerHTML = '';
+                tempElement = null;
+            }
+            isDrawing = false;
+        });
+        
+        // ========== КНОПКИ ==========
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+                clearSelection();
+            });
+        });
+        
+        document.getElementById('drawCatBtn').addEventListener('click', () => {
+            elements = defaultCat.map(el => ({type: el.type, attr: {...el.attr}}));
+            redrawAll();
+            clearSelection();
+            updateLayersPanel();
+            saveToHistory();
+        });
+        
+        document.getElementById('applyPropsBtn').addEventListener('click', () => {
+            if (!selectedElement) return;
+            const a = selectedElement.attr;
+            if (selectedElement.type === 'ellipse') {
+                a.cx = parseFloat(document.getElementById('prop_cx')?.value||0);
+                a.cy = parseFloat(document.getElementById('prop_cy')?.value||0);
+                a.rx = parseFloat(document.getElementById('prop_rx')?.value||0);
+                a.ry = parseFloat(document.getElementById('prop_ry')?.value||0);
+            } else if (selectedElement.type === 'circle') {
+                a.cx = parseFloat(document.getElementById('prop_cx')?.value||0);
+                a.cy = parseFloat(document.getElementById('prop_cy')?.value||0);
+                a.r = parseFloat(document.getElementById('prop_r')?.value||0);
+            } else if (selectedElement.type === 'line') {
+                a.x1 = parseFloat(document.getElementById('prop_x1')?.value||0);
+                a.y1 = parseFloat(document.getElementById('prop_y1')?.value||0);
+                a.x2 = parseFloat(document.getElementById('prop_x2')?.value||0);
+                a.y2 = parseFloat(document.getElementById('prop_y2')?.value||0);
+            }
+            a.fill = document.getElementById('prop_fill')?.value || 'none';
+            a.stroke = document.getElementById('prop_stroke')?.value || '#222';
+            a['stroke-width'] = document.getElementById('prop_sw')?.value || 2;
+            
+            redrawAll();
+            drawHandles(selectedIndex);
+            updateLayersPanel();
+            saveToHistory();
+        });
+        
+        document.getElementById('deleteElementBtn').addEventListener('click', () => {
+            if (selectedIndex >= 0) {
+                elements.splice(selectedIndex, 1);
+                redrawAll();
+                clearSelection();
+                updateLayersPanel();
+                saveToHistory();
+            }
+        });
+        
+        document.getElementById('duplicateElementBtn').addEventListener('click', () => {
+            if (selectedElement) {
+                const newAttr = {...selectedElement.attr};
+                if (newAttr.cx) newAttr.cx = parseFloat(newAttr.cx) + 10;
+                if (newAttr.cy) newAttr.cy = parseFloat(newAttr.cy) + 10;
+                addElement(selectedElement.type, newAttr);
+            }
+        });
+        
+        document.getElementById('moveUpBtn').addEventListener('click', () => {
+            if (selectedIndex > 0) moveLayer(selectedIndex, selectedIndex - 1);
+        });
+        document.getElementById('moveDownBtn').addEventListener('click', () => {
+            if (selectedIndex < elements.length - 1) moveLayer(selectedIndex, selectedIndex + 1);
+        });
+        document.getElementById('moveTopBtn').addEventListener('click', () => {
+            if (selectedIndex > 0) moveLayer(selectedIndex, 0);
+        });
+        document.getElementById('moveBottomBtn').addEventListener('click', () => {
+            if (selectedIndex < elements.length - 1) moveLayer(selectedIndex, elements.length - 1);
+        });
+        
+        document.getElementById('exportCoordsBtn').addEventListener('click', () => {
+            let out = '// 🐱 SVG Кот - экспорт из редактора\nconst catElements = [\n';
+            elements.forEach(el => {
+                out += `  {type:'${el.type}', attr:{${Object.entries(el.attr).map(([k,v])=>`${k}:'${v}'`).join(', ')}}},\n`;
+            });
+            out += '];\n\n// Функция для отрисовки:\nfunction drawCat(svgGroup) {\n  catElements.forEach(el => {\n    const elem = document.createElementNS("http://www.w3.org/2000/svg", el.type);\n    Object.entries(el.attr).forEach(([k,v]) => elem.setAttribute(k, v));\n    svgGroup.appendChild(elem);\n  });\n}';
+            
+            const blob = new Blob([out], {type: 'text/javascript'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'cat-svg-export.js';
+            a.click();
+        });
+        
+        document.getElementById('clearAllBtn').addEventListener('click', () => {
+            if (confirm('Очистить всё?')) {
+                elements = [];
+                redrawAll();
+                clearSelection();
+                updateLayersPanel();
+                saveToHistory();
+            }
+        });
+        
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if (historyIndex > 0) jumpToHistory(historyIndex - 1);
+        });
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            if (historyIndex < history.length - 1) jumpToHistory(historyIndex + 1);
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' && selectedElement) {
+                elements.splice(selectedIndex, 1);
+                redrawAll();
+                clearSelection();
+                updateLayersPanel();
+                saveToHistory();
+            }
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); if (historyIndex > 0) jumpToHistory(historyIndex - 1); }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); if (historyIndex < history.length - 1) jumpToHistory(historyIndex + 1); }
+        });
+        
+        // Инициализация
+        document.querySelector('[data-tool="select"]').classList.add('active');
+        setTimeout(() => {
+            elements = defaultCat.map(el => ({type: el.type, attr: {...el.attr}}));
+            redrawAll();
+            updateLayersPanel();
+            saveToHistory();
+        }, 100);
+    </script>
+</body>
+</html>
